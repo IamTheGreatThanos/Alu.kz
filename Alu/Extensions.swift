@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import SystemConfiguration
+import UserNotifications
 
 extension UITextField{
     
@@ -175,9 +176,9 @@ class Reachability {
 
 
 extension String {
-    subscript (index: Int) -> Character {
+    subscript (index: Int) -> String {
         let charIndex = self.index(self.startIndex, offsetBy: index)
-        return self[charIndex]
+        return String(self[charIndex])
     }
 
     subscript (range: Range<Int>) -> Substring {
@@ -186,4 +187,78 @@ extension String {
         return self[startIndex..<stopIndex]
     }
 
+}
+
+
+extension UITextField {
+    func setLeftPaddingPoints(_ amount:CGFloat){
+        let paddingView = UIView(frame: CGRect(x: 0, y: 0, width: amount, height: self.frame.size.height))
+        self.leftView = paddingView
+        self.leftViewMode = .always
+    }
+    func setRightPaddingPoints(_ amount:CGFloat) {
+        let paddingView = UIView(frame: CGRect(x: 0, y: 0, width: amount, height: self.frame.size.height))
+        self.rightView = paddingView
+        self.rightViewMode = .always
+    }
+}
+
+
+
+extension UIImageView {
+    func load(url: URL) {
+        DispatchQueue.global().async { [weak self] in
+            if let data = try? Data(contentsOf: url) {
+                if let image = UIImage(data: data) {
+                    DispatchQueue.main.async {
+                        self?.contentMode = .scaleAspectFit
+                        self?.image = image
+                    }
+                }
+            }
+        }
+    }
+    
+    func loadAva(url: URL) {
+        DispatchQueue.global().async { [weak self] in
+            if let data = try? Data(contentsOf: url) {
+                if let image = UIImage(data: data) {
+                    DispatchQueue.main.async {
+                        self?.contentMode = .scaleAspectFit
+                        self?.image = image
+                        let imageData = image.jpegData(compressionQuality: 1.0)
+                        let defaults = UserDefaults.standard
+                        defaults.set(imageData, forKey: "AvaImage")
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+extension UIImage {
+    func resizeWithPercent(percentage: CGFloat) -> UIImage? {
+        let imageView = UIImageView(frame: CGRect(origin: .zero, size: CGSize(width: size.width * percentage, height: size.height * percentage)))
+        imageView.contentMode = .scaleAspectFill
+        imageView.image = self
+        UIGraphicsBeginImageContextWithOptions(imageView.bounds.size, false, scale)
+        guard let context = UIGraphicsGetCurrentContext() else { return nil }
+        imageView.layer.render(in: context)
+        guard let result = UIGraphicsGetImageFromCurrentImageContext() else { return nil }
+        UIGraphicsEndImageContext()
+        return result
+    }
+    func resizeWithWidth(width: CGFloat) -> UIImage? {
+        let imageView = UIImageView(frame: CGRect(origin: .zero, size: CGSize(width: width, height: CGFloat(ceil(width/size.width * size.height)))))
+        imageView.contentMode = .scaleAspectFill
+        imageView.image = self
+        UIGraphicsBeginImageContextWithOptions(imageView.bounds.size, false, scale)
+        guard let context = UIGraphicsGetCurrentContext() else { return nil }
+        imageView.layer.render(in: context)
+        guard let result = UIGraphicsGetImageFromCurrentImageContext() else { return nil }
+        UIGraphicsEndImageContext()
+        return result
+    }
+    
 }

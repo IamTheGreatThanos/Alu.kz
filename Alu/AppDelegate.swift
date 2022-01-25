@@ -8,15 +8,115 @@
 
 import UIKit
 import CoreData
+import UserNotifications
+import Alamofire
+import SwiftyJSON
+import NotificationCenter
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        Thread.sleep(forTimeInterval: 5.0)
+        Thread.sleep(forTimeInterval: 2.0)
+        if #available(iOS 13.0, *) {
+            UIApplication.shared.statusBarStyle = .darkContent
+        } else {
+            UIApplication.shared.statusBarStyle = .default
+        }
+        
+        UNUserNotificationCenter.current().delegate = self
+        
+        registerForPushNotifications()
+        
+        
+        if let notification = launchOptions?[.remoteNotification] as? [String: AnyObject] {
+//            let aps = notification["aps"] as! [String: AnyObject]
+        }
+        
+        
+        
         return true
+    }
+    
+
+    
+    @available(iOS 10, *)
+    public func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.alert, .sound, .badge])
+    }
+    
+    public func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Swift.Void) {
+        
+        let actionIdentifier = response.actionIdentifier
+         
+        switch actionIdentifier {
+        case UNNotificationDismissActionIdentifier: // Notification was dismissed by user
+            print("Dismiss")
+            completionHandler()
+        case UNNotificationDefaultActionIdentifier: // App was opened from notification
+            let storyboard = UIStoryboard(name: "Main", bundle: nil)
+
+            let initialViewController = storyboard.instantiateViewController(withIdentifier: "TabBarController") as! TabBarController
+            initialViewController.selectedViewController = initialViewController.viewControllers![4] as! ProfileNavigationController
+            let vc = storyboard.instantiateViewController(withIdentifier: "MessagesController") as? MessagesController
+
+            self.window?.rootViewController = initialViewController
+            let navController = initialViewController.selectedViewController as? UINavigationController
+            navController!.pushViewController(vc!, animated: true)
+            
+            self.window?.makeKeyAndVisible()
+            
+            completionHandler()
+        default:
+            completionHandler()
+        }
+    }
+
+    
+    func application(
+      _ application: UIApplication,
+      didReceiveRemoteNotification userInfo: [AnyHashable : Any],
+      fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+//        let aps = userInfo["aps"] as! [String: AnyObject]
+    }
+    
+    
+    func registerForPushNotifications() {
+      UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) {
+        (granted, error) in
+//        print("Permission granted: \(granted)")
+        guard granted else { return }
+        self.getNotificationSettings()
+      }
+    }
+    
+    func getNotificationSettings() {
+        UNUserNotificationCenter.current().getNotificationSettings { (settings) in
+        //        print("Notification settings: \(settings)")
+            guard settings.authorizationStatus == .authorized else { return }
+            DispatchQueue.main.async{
+                UIApplication.shared.registerForRemoteNotifications()
+            }
+        }
+    }
+    
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        
+        
+        let tokenParts = deviceToken.map { data -> String in
+        return String(format: "%02.2hhx", data)
+        }
+
+        let token = tokenParts.joined()
+        UserDefaults.standard.set(String(token), forKey: "DeviceToken")
+        print("Device Token: \(token)")
+    }
+
+    func application(_ application: UIApplication,
+                     didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("Failed to register: \(error)")
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
